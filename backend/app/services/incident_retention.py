@@ -17,6 +17,15 @@ class IncidentRetentionService:
         self._delete_evidence_files(incident)
         return await incident_repository.delete(incident.id, owner_id)
 
+    async def release_evidence(self, incident_id: str, owner_id: str) -> bool:
+        """Delete server evidence after its owner confirms browser storage succeeded."""
+
+        incident = await incident_repository.get(incident_id, owner_id)
+        if incident is None:
+            return False
+        self._delete_evidence_files(incident)
+        return True
+
     async def cleanup_expired(self) -> int:
         """Delete every incident older than the configured retention period."""
 

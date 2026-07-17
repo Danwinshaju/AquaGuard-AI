@@ -112,6 +112,16 @@ async def incident_clip(incident_id: str, user: CurrentUser) -> FileResponse:
     return FileResponse(path, media_type="video/mp4")
 
 
+@router.post("/{incident_id}/release-evidence", status_code=status.HTTP_204_NO_CONTENT)
+async def release_incident_evidence(incident_id: str, user: CurrentUser) -> Response:
+    """Remove server media only after the owner's browser saved both evidence blobs."""
+
+    released = await incident_retention_service.release_evidence(incident_id, user.id)
+    if not released:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.patch("/{incident_id}/acknowledge", response_model=IncidentActionResponse)
 async def acknowledge_incident(incident_id: str, user: CurrentUser) -> IncidentActionResponse:
     """Record that an operator has seen and started responding to an alert."""

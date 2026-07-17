@@ -9,6 +9,7 @@ router = APIRouter()
 
 GUIDES = {
     "user-guide": "USER-GUIDE.md",
+    "accounts-and-storage-guide": "ACCOUNTS-AND-STORAGE-GUIDE.md",
     "live-demo-guide": "LIVE-DEMO-GUIDE.md",
     "troubleshooting-guide": "TROUBLESHOOTING-GUIDE.md",
     "aquatic-model-training": "AQUATIC-MODEL-TRAINING.md",

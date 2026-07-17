@@ -26,6 +26,10 @@ Open `/cameras` and register an `rtsp://`, `http://`, or `https://` stream. Ever
 
 `/incidents` supports camera/video search, status, source, risk and date filters. Operators can add notes, acknowledge or resolve alerts, mark false alarms, select and delete multiple incidents, export CSV, or use **Print / Save PDF** for a printable report. Every operation is restricted to the signed-in owner, including evidence-file responses and **Delete all**. Evidence and its MongoDB record still expire automatically after 24 hours.
 
+## Per-user device storage
+
+Processed video and incident media are stored in the signed-in account's browser IndexedDB. AquaGuard downloads and validates each blob, commits it to IndexedDB, and only then calls an owner-checked endpoint to remove the temporary server file. Failed transfers deliberately keep the server copy. Evidence created by unattended network cameras transfers when the owner opens `/incidents`. IndexedDB is specific to one browser profile and origin, can be cleared by the user/browser, and is not cross-device cloud storage.
+
 ## External alerts and escalation
 
 Browser live danger produces the existing visual warning, vibration, and three beeps. Set `ALERT_WEBHOOK_URL` to deliver JSON to a control-room service, Slack-compatible relay, SMS/phone provider, automation server, or physical-siren controller. Alternatively set the SMTP variables for email. An unresolved alert is sent again as `ESCALATED` after `ALERT_ESCALATION_SECONDS`.

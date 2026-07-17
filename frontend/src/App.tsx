@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -34,6 +34,7 @@ import { DocumentationPage } from "./pages/DocumentationPage";
 import { ProjectFooter } from "./components/ProjectFooter";
 import { AuthPage } from "./pages/AuthPage";
 import { useAuth } from "./auth/AuthContext";
+import { moveIncidentEvidenceToDevice, moveProcessedVideoToDevice } from "./storage/userMediaStorage";
 
 type Phase = "choose" | "uploading" | "analysing" | "complete" | "error";
 
@@ -56,6 +57,10 @@ function AnalyzePage() {
   const [dragging, setDragging] = useState(false);
   const [acknowledgedIds, setAcknowledgedIds] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
+  const [storageStatus, setStorageStatus] = useState<"idle" | "moving" | "device" | "partial">("idle");
+  const savedObjectUrlsRef = useRef<string[]>([]);
+
+  useEffect(() => () => releaseSavedObjectUrls(), []);
 
   const analysis = useMutation({
     mutationFn: async (selectedFile: File) => {
@@ -72,6 +77,32 @@ function AnalyzePage() {
     onSuccess: (processed) => {
       setResult(processed);
       setPhase("complete");
+      setStorageStatus("moving");
+      if (!user) return;
+      void (async () => {
+        let complete = true;
+        let processedUrl = processed.download_url;
+        try {
+          processedUrl = await moveProcessedVideoToDevice(user.id, processed.id, processed.download_url);
+          savedObjectUrlsRef.current.push(processedUrl);
+        } catch {
+          complete = false;
+        }
+        const incidents = await Promise.all(processed.incidents.map(async (incident) => {
+          try {
+            const local = await moveIncidentEvidenceToDevice(user.id, incident);
+            savedObjectUrlsRef.current.push(local.snapshotUrl, local.clipUrl);
+            return { ...incident, snapshot_url: local.snapshotUrl, clip_url: local.clipUrl };
+          } catch {
+            complete = false;
+            return incident;
+          }
+        }));
+        setResult((current) => current?.id === processed.id
+          ? { ...current, download_url: processedUrl, incidents }
+          : current);
+        setStorageStatus(complete ? "device" : "partial");
+      })();
     },
     onError: (reason) => {
       setError(reason instanceof Error ? reason.message : "Something went wrong.");
@@ -103,6 +134,7 @@ function AnalyzePage() {
   }
 
   function reset() {
+    releaseSavedObjectUrls();
     analysis.reset();
     setFile(null);
     setResult(null);
@@ -110,8 +142,14 @@ function AnalyzePage() {
     setPhase("choose");
     setAcknowledgedIds([]);
     setProgress(0);
+    setStorageStatus("idle");
     playedAlertIdsRef.current.clear();
     if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function releaseSavedObjectUrls() {
+    for (const url of savedObjectUrlsRef.current) URL.revokeObjectURL(url);
+    savedObjectUrlsRef.current = [];
   }
 
   const busy = phase === "uploading" || phase === "analysing";
@@ -322,7 +360,11 @@ function AnalyzePage() {
                 <div className="bg-slate-950 p-2 sm:p-4">
                   <video
                     className="aspect-video w-full rounded-xl bg-black"
+                    autoPlay
                     controls
+                    loop
+                    muted
+                    playsInline
                     preload="metadata"
                     src={result.download_url}
                     onTimeUpdate={(event) => {
@@ -351,6 +393,8 @@ function AnalyzePage() {
                   </video>
                 </div>
                 <div className="p-5 sm:p-8">
+                  <div className={`mb-5 rounded-xl border p-3 text-sm font-bold ${storageStatus === "device" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : storageStatus === "partial" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-ocean-200 bg-ocean-50 text-ocean-900"}`}>{storageStatus === "device" ? "Processed video and evidence are saved in this browser. Server copies were removed." : storageStatus === "partial" ? "Some media could not move to browser storage. Its temporary server copy remains available." : "Moving the processed video and evidence into your browser storage..."}</div>
+                  <a className="mb-5 inline-flex rounded-xl bg-ocean-600 px-4 py-2 font-black text-white" href={result.download_url} download={`aquaguard-${result.id}.mp4`}>Download processed video</a>
                   {result.detection_mode === "mock" && (
                     <div className="mb-5 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                       <AlertTriangle className="shrink-0" size={20} />

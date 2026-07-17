@@ -16,6 +16,7 @@ from app.db.mongodb import mongo_database
 from app.services.alert_delivery import alert_delivery_service
 from app.services.camera_manager import camera_manager
 from app.services.incident_retention import incident_retention_service
+from app.services.video_storage import video_storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,11 @@ async def _incident_cleanup_loop() -> None:
             deleted_count = await incident_retention_service.cleanup_expired()
             if deleted_count:
                 logger.info("Deleted %s expired incident(s).", deleted_count)
+            stale_video_count = video_storage_service.cleanup_stale(
+                settings.incident_retention_hours
+            )
+            if stale_video_count:
+                logger.info("Deleted %s abandoned temporary video file(s).", stale_video_count)
         except Exception:
             logger.exception("Automatic incident evidence cleanup failed.")
         await asyncio.sleep(settings.incident_cleanup_interval_seconds)

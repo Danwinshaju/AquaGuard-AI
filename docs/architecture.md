@@ -23,7 +23,7 @@ FastAPI API
           `-- risk engine -> incident media + database record
 ```
 
-For the MVP, uploaded and processed media live on the local disk. The storage interface will be kept separate so object storage can replace it later.
+Uploaded and generated media first uses temporary server disk because AI processing runs in FastAPI. After the signed-in browser verifies a complete IndexedDB write, an owner-checked release endpoint deletes the corresponding temporary server copy. MongoDB stores accounts, hashed session tokens, owner-scoped metadata, incident lifecycle data, notes, and camera configuration; it does not store the video bytes.
 
 ## Backend layers
 
@@ -112,8 +112,8 @@ Video processing can take much longer than a normal web request. Upload returns 
 
 - Validate extension, detected MIME type, and maximum size.
 - Generate server-side storage names; never trust an uploaded filename as a path.
-- Hash passwords and use short-lived JWT access tokens.
-- Enforce administrator, supervisor, and lifeguard permissions on the server.
+- Hash passwords with salted `scrypt` and store only opaque session-token hashes in MongoDB.
+- Require the HttpOnly session cookie on protected REST and WebSocket routes and filter every owned resource by the authenticated user ID.
 - Keep secrets in environment variables and out of Git.
 - Restrict CORS to configured frontend origins.
 - Add central errors, request logs, audit logs, and rate limiting.

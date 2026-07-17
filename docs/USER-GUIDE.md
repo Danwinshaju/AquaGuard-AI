@@ -48,6 +48,8 @@ Every main page has the following navigation:
 
 Incident lists, dashboard totals, screenshots, clips, CSV exports, notes, status changes, deletion actions, and saved network cameras are filtered by the signed-in account on the backend. Knowing another incident ID does not grant access. An unauthenticated request receives HTTP 401. Sessions last up to seven days and are stored in an HttpOnly browser cookie; the password is stored only as a salted `scrypt` hash.
 
+For detailed signup, login, shared-computer, account-isolation, startup, and storage scenarios, read [ACCOUNTS-AND-STORAGE-GUIDE.md](ACCOUNTS-AND-STORAGE-GUIDE.md).
+
 ## 3. Analyse an uploaded video
 
 1. Open **Analyse**.
@@ -55,8 +57,8 @@ Incident lists, dashboard totals, screenshots, clips, CSV exports, notes, status
 3. Confirm the selected filename.
 4. Select **Upload and analyse video**.
 5. Keep the page open while the progress percentage increases.
-6. When processing finishes, press play on the labelled output video.
-7. Watch the person boxes, tracking IDs, movement values, risk labels, and warning banner.
+6. When processing finishes, the labelled output video starts automatically and repeats continuously. It starts muted so Chrome and Edge do not block autoplay; use the player control to unmute it.
+7. Watch the person boxes, tracking IDs, movement values, risk labels, and warning banner. Pause or seek with the normal player controls when you need to inspect a frame.
 8. If a possible danger incident exists, the page displays its screenshot and short evidence clip.
 9. Select **Acknowledge and respond** only after a person has visually checked the situation.
 10. Select **Analyse another video** to clear the current result.
@@ -144,6 +146,12 @@ Only incidents created while your account was signed in appear on this page. **D
 10. Delete only when evidence is no longer needed. Deletion is permanent.
 
 Incident documents, screenshots, and clips are automatically deleted after 24 hours by default.
+
+### Where evidence is stored
+
+The server creates media temporarily because AI processing runs on the server. After both the screenshot and clip are successfully written to the signed-in user's browser IndexedDB, AquaGuard requests deletion of the server copies. Uploaded originals and processed videos follow the same transfer-and-release rule. If browser storage is blocked, full, or unavailable, AquaGuard keeps the temporary server copy rather than deleting the only evidence. Network-camera evidence transfers when the owner next opens **Incidents**.
+
+Device evidence is specific to the browser profile and deployment address. It will not appear automatically on another computer, in another browser, or after browser-site data is cleared. Download any evidence that must be kept. Device evidence and its MongoDB report expire after 24 hours by default.
 
 ## 8. Train the optional temporal AI
 
