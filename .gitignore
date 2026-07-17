@@ -1,0 +1,41 @@
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / Vite
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Generated media and AI model weights
+storage/uploads/*
+storage/processed/*
+storage/incidents/*
+!storage/uploads/.gitkeep
+!storage/processed/.gitkeep
+!storage/incidents/.gitkeep
+*.pt
+*.onnx
+backend/runs/
+storage/training/
+
+# Editors and operating systems
+.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

@@ -1,0 +1,12 @@
+{
+  "name": "aquaguard-ai",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Single-command launcher for the AquaGuard frontend and backend",
+  "scripts": {
+    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-app.ps1",
+    "start:fast": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-app.ps1 -SkipFrontendBuild",
+    "build": "npm --prefix frontend run build",
+    "check:frontend": "npm --prefix frontend run build"
+  }
+}

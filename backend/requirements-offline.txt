@@ -1,0 +1,17 @@
+# Application and development packages downloaded into the offline wheelhouse.
+# CPU-only torch and torchvision are downloaded separately from PyTorch's official index.
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+pydantic-settings==2.10.1
+pymongo==4.13.2
+python-dotenv==1.1.1
+python-multipart==0.0.20
+numpy==2.2.6
+opencv-python-headless==4.11.0.86
+ultralytics==8.3.169
+imageio-ffmpeg==0.6.0
+httpx==0.28.1
+pytest==8.4.1
+pytest-asyncio==1.1.0
+ruff==0.12.5
+black==25.1.0
