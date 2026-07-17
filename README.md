@@ -63,20 +63,6 @@ After the first successful frontend build, this faster command reuses the existi
 npm run start:fast
 ```
 
-## Free online portfolio demo
-
-The repository includes a separate [`streamlit_app.py`](streamlit_app.py) for Streamlit
-Community Cloud. It provides a public, lightweight uploaded-video demonstration without
-MongoDB, login accounts, or persistent media storage. The full React/FastAPI application
-above remains the primary local project.
-
-The free demo accepts videos up to 150 MB and 60 seconds, runs YOLO and ByteTrack on CPU,
-creates a labelled MP4, displays an optional possible-risk frame, and deletes temporary
-server files when processing finishes. Its movement-risk heuristic is illustrative and is
-not a validated drowning classifier.
-
-See [Streamlit deployment guide](docs/STREAMLIT-DEPLOYMENT.md) for the exact deployment form.
-
 ## Verification
 
 Backend:
@@ -101,7 +87,6 @@ npm run build
 - [Complete project documentation](docs/PROJECT-DOCUMENTATION.md)
 - [User guide](docs/USER-GUIDE.md)
 - [Accounts, login, startup, and storage guide](docs/ACCOUNTS-AND-STORAGE-GUIDE.md)
-- [Streamlit free-demo deployment guide](docs/STREAMLIT-DEPLOYMENT.md)
 - [Live demonstration guide](docs/LIVE-DEMO-GUIDE.md)
 - [Troubleshooting guide](docs/TROUBLESHOOTING-GUIDE.md)
 - [Architecture](docs/architecture.md)
