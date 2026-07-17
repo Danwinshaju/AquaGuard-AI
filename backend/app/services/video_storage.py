@@ -1,8 +1,9 @@
 """Secure validation and local storage for uploaded videos."""
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException, UploadFile, status
 
@@ -32,7 +33,10 @@ class StoredVideo:
 class VideoStorageService:
     """Stream validated uploads to local disk without trusting client filenames."""
 
-    async def store(self, upload: UploadFile) -> StoredVideo:
+    def __init__(self) -> None:
+        self._owners: dict[str, str] = {}
+
+    async def store(self, upload: UploadFile, owner_id: str) -> StoredVideo:
         """Validate and store one upload, deleting partial files after any failure."""
 
         original_filename = Path(upload.filename or "").name
@@ -76,6 +80,7 @@ class VideoStorageService:
                 )
             self._validate_file_signature(extension, header)
             temporary_path.replace(final_path)
+            self._owners[video_id] = owner_id
         except Exception:
             temporary_path.unlink(missing_ok=True)
             final_path.unlink(missing_ok=True)
@@ -91,6 +96,51 @@ class VideoStorageService:
             size_bytes=size_bytes,
             path=final_path,
         )
+
+    def require_owner(self, video_id: str, owner_id: str) -> str:
+        """Hide temporary uploads from every account except their creator."""
+
+        try:
+            safe_id = str(UUID(video_id))
+        except ValueError as error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Video ID must be a valid UUID.",
+            ) from error
+        if self._owners.get(safe_id) != owner_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found.")
+        return safe_id
+
+    def release(self, video_id: str, owner_id: str) -> None:
+        """Delete an owner's temporary upload and processed server output."""
+
+        safe_id = self.require_owner(video_id, owner_id)
+        storage_root = get_settings().storage_root
+        for upload_path in (storage_root / "uploads").glob(f"{safe_id}.*"):
+            upload_path.unlink(missing_ok=True)
+        (storage_root / "processed" / f"{safe_id}.mp4").unlink(missing_ok=True)
+        (storage_root / "processed" / f"{safe_id}.opencv.mp4").unlink(missing_ok=True)
+        (storage_root / "processed" / f"{safe_id}.part.mp4").unlink(missing_ok=True)
+        self._owners.pop(safe_id, None)
+
+    def cleanup_stale(self, retention_hours: float = 24.0) -> int:
+        """Remove abandoned temporary video files left by closed browsers or restarts."""
+
+        cutoff = datetime.now(UTC) - timedelta(hours=retention_hours)
+        deleted = 0
+        storage_root = get_settings().storage_root
+        for directory_name in ("uploads", "processed"):
+            directory = storage_root / directory_name
+            if not directory.is_dir():
+                continue
+            for path in directory.iterdir():
+                if not path.is_file():
+                    continue
+                modified = datetime.fromtimestamp(path.stat().st_mtime, UTC)
+                if modified < cutoff:
+                    path.unlink(missing_ok=True)
+                    deleted += 1
+        return deleted
 
     @staticmethod
     def _validate_extension(extension: str) -> None:

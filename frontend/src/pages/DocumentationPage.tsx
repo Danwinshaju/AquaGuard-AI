@@ -51,6 +51,7 @@ const apiEndpoints = [
   ["WS", "/api/v1/live/ws", "Browser-camera frames and tracked output"],
   ["GET/POST", "/api/v1/cameras", "List or register network cameras"],
   ["GET", "/api/v1/incidents", "Search and filter incident reports"],
+  ["POST", "/api/v1/incidents/{id}/release-evidence", "Release server media after browser storage"],
   ["PATCH", "/api/v1/incidents/{id}/notes", "Save operator notes"],
   ["GET", "/api/v1/incidents/export.csv", "Export incident report data"],
   ["POST", "/api/v1/model/train", "Train the optional temporal model"],
@@ -130,7 +131,7 @@ export function DocumentationPage() {
               <Step number="3" title="Calibrate and check" text="Draw the pool zone, choose a performance mode and confirm tracking boxes follow the visible people." />
               <Step number="4" title="Monitor the output" text="Watch person IDs, risk status, processing FPS and visual warnings while maintaining direct observation." />
               <Step number="5" title="Respond to alerts" text="Verify immediately, alert a trained lifeguard and follow the emergency plan without delaying to inspect the software." />
-              <Step number="6" title="Review your incidents" text="Your account can only inspect, update, export, or delete its own evidence before automatic deletion." />
+              <Step number="6" title="Review your incidents" text="Evidence moves into your browser storage; your account can only inspect, update, export, or delete its own reports." />
             </ol>
             <h3 className="mt-6 text-lg font-black">Separate instruction files</h3>
             <p className="mt-1 text-sm text-slate-600">Download the guide you need and open it with VS Code, Notepad, Word, or a Markdown viewer.</p>
@@ -157,7 +158,7 @@ export function DocumentationPage() {
                 <FlowBox icon={<Camera />} label="Video sources" /><Arrow /><FlowBox icon={<Server />} label="FastAPI + WebSocket" /><Arrow /><FlowBox icon={<BrainCircuit />} label="Detection + tracking + risk" /><Arrow /><FlowBox icon={<Database />} label="MongoDB + evidence" /><Arrow /><FlowBox icon={<MonitorPlay />} label="React operator UI" />
               </div>
             </div>
-            <ul className="mt-5 list-disc space-y-2 pl-6 text-slate-600"><li>The React frontend and FastAPI backend use the same local address: <code>127.0.0.1:8000</code>.</li><li>Browser-camera frames travel through a WebSocket and annotated JPEG frames return to the page.</li><li>Network cameras run independent backend AI sessions with automatic reconnection.</li><li>MongoDB stores metadata; screenshots and clips are stored under the local <code>storage</code> folder.</li></ul>
+            <ul className="mt-5 list-disc space-y-2 pl-6 text-slate-600"><li>The React frontend and FastAPI backend use the same local address: <code>127.0.0.1:8000</code>.</li><li>Browser-camera frames travel through a WebSocket and annotated JPEG frames return to the page.</li><li>Network cameras run independent backend AI sessions with automatic reconnection.</li><li>MongoDB stores account and report metadata; processed media moves from temporary server files into the owner's browser IndexedDB.</li></ul>
           </DocSection>
 
           <DocSection id="ai" icon={<BrainCircuit />} title="AI detection and risk workflow">
@@ -173,7 +174,7 @@ export function DocumentationPage() {
           </DocSection>
 
           <DocSection id="features" icon={<CheckCircle2 />} title="Implemented features">
-            <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">{["Private signup, login and logout", "Owner-isolated incidents, evidence and cameras", "Uploaded-video analysis with processing progress", "Browser live camera and tracked AI output", "Persistent RTSP/HTTP camera registrations", "Direct-on-video pool-zone drawing", "Fast, Balanced and Accurate modes", "YOLO person and pose analysis", "ByteTrack person identity tracking", "Explainable temporal risk signals", "Optional locally trained LSTM classifier", "Three-beep danger alert and browser vibration", "Evidence snapshot and short H.264 clip", "MongoDB incident lifecycle and notes", "Search, status, risk, source and date filters", "CSV export and printable PDF reports", "Select/delete selected/delete all incidents", "Automatic 24-hour evidence deletion", "Webhook/email alert delivery and escalation", "Dashboard GPU, storage and database health", "Single-command normal startup"].map((feature) => <p className="flex gap-2 text-sm font-semibold text-slate-700" key={feature}><CheckCircle2 className="mt-0.5 shrink-0 text-emerald-600" size={18} />{feature}</p>)}</div>
+            <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">{["Private signup, login and logout", "Owner-isolated incidents, evidence and cameras", "Per-account browser IndexedDB media", "Verified transfer before server-file release", "Uploaded-video analysis with processing progress", "Browser live camera and tracked AI output", "Persistent RTSP/HTTP camera registrations", "Direct-on-video pool-zone drawing", "Fast, Balanced and Accurate modes", "YOLO person and pose analysis", "ByteTrack person identity tracking", "Explainable temporal risk signals", "Optional locally trained LSTM classifier", "Three-beep danger alert and browser vibration", "Evidence snapshot and short H.264 clip", "MongoDB incident lifecycle and notes", "Search, status, risk, source and date filters", "CSV export and printable PDF reports", "Select/delete selected/delete all incidents", "Automatic 24-hour evidence deletion", "Webhook/email alert delivery and escalation", "Dashboard GPU, storage and database health", "Single-command normal startup"].map((feature) => <p className="flex gap-2 text-sm font-semibold text-slate-700" key={feature}><CheckCircle2 className="mt-0.5 shrink-0 text-emerald-600" size={18} />{feature}</p>)}</div>
           </DocSection>
 
           <DocSection id="run" icon={<Terminal />} title="Run and verify the project">
@@ -188,7 +189,7 @@ export function DocumentationPage() {
           </DocSection>
 
           <DocSection id="data" icon={<HardDrive />} title="Data storage and retention">
-            <div className="grid gap-4 sm:grid-cols-2"><MiniCard title="MongoDB" text="Incident metadata, lifecycle status, notes and persistent network-camera configurations." /><MiniCard title="Local storage" text="Uploaded files, processed video, evidence snapshots, clips and temporary training CSV files." /></div>
+            <div className="grid gap-4 sm:grid-cols-2"><MiniCard title="MongoDB" text="Accounts, sessions, incident metadata, lifecycle status, notes and camera configurations." /><MiniCard title="User browser storage" text="IndexedDB receives processed videos, snapshots and clips before temporary server copies are deleted." /></div>
             <p className="mt-4 leading-7 text-slate-600">Incident records, snapshots and clips are automatically deleted after 24 hours by default. Operators can delete one, selected, or all incidents earlier. Uploaded training CSV files are removed when their training job finishes.</p>
           </DocSection>
 

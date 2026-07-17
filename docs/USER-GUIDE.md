@@ -145,6 +145,12 @@ Only incidents created while your account was signed in appear on this page. **D
 
 Incident documents, screenshots, and clips are automatically deleted after 24 hours by default.
 
+### Where evidence is stored
+
+The server creates media temporarily because AI processing runs on the server. After both the screenshot and clip are successfully written to the signed-in user's browser IndexedDB, AquaGuard requests deletion of the server copies. Uploaded originals and processed videos follow the same transfer-and-release rule. If browser storage is blocked, full, or unavailable, AquaGuard keeps the temporary server copy rather than deleting the only evidence. Network-camera evidence transfers when the owner next opens **Incidents**.
+
+Device evidence is specific to the browser profile and deployment address. It will not appear automatically on another computer, in another browser, or after browser-site data is cleared. Download any evidence that must be kept. Device evidence and its MongoDB report expire after 24 hours by default.
+
 ## 8. Train the optional temporal AI
 
 1. Open **Train AI**.

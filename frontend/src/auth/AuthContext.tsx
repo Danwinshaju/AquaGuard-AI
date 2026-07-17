@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { purgeExpiredOwnerMedia } from "../storage/userMediaStorage";
 
 export interface AccountUser {
   id: string;
@@ -34,7 +35,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetch("/api/v1/auth/me")
       .then(async (response) => (response.ok ? ((await response.json()) as AccountUser) : null))
       .then((account) => {
-        if (active) setUser(account);
+        if (active) {
+          setUser(account);
+          if (account) void purgeExpiredOwnerMedia(account.id);
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -57,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }),
         );
         setUser(account);
+        void purgeExpiredOwnerMedia(account.id);
       },
       signup: async (name, email, password) => {
         const account = await readAccount(
@@ -67,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }),
         );
         setUser(account);
+        void purgeExpiredOwnerMedia(account.id);
       },
       logout: async () => {
         await fetch("/api/v1/auth/logout", { method: "POST" });

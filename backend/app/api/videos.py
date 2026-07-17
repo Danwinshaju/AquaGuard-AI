@@ -3,7 +3,7 @@
 import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, File, UploadFile, WebSocket, status
+from fastapi import APIRouter, File, Response, UploadFile, WebSocket, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 
@@ -53,6 +53,7 @@ def _processing_response(result: ProcessedVideo) -> VideoProcessingResponse:
                 status=incident.status,
                 snapshot_url=f"/api/v1/incidents/{incident.id}/snapshot",
                 clip_url=f"/api/v1/incidents/{incident.id}/clip",
+                created_at=incident.created_at,
             )
             for incident in result.incidents
         ],
@@ -71,7 +72,7 @@ async def upload_video(
 ) -> VideoUploadResponse:
     """Validate an uploaded pool video and save it using a safe generated name."""
 
-    stored_video = await video_storage_service.store(file)
+    stored_video = await video_storage_service.store(file, user.id)
     return VideoUploadResponse(
         id=stored_video.id,
         original_filename=stored_video.original_filename,
@@ -90,7 +91,8 @@ async def upload_video(
 async def process_video(video_id: str, user: CurrentUser) -> VideoProcessingResponse:
     """Read every frame with OpenCV and create an annotated output video."""
 
-    result = await run_in_threadpool(video_processing_service.process, video_id)
+    safe_id = video_storage_service.require_owner(video_id, user.id)
+    result = await run_in_threadpool(video_processing_service.process, safe_id)
     await incident_repository.save_many(result.incidents, user.id)
     await alert_delivery_service.dispatch_many(result.incidents)
     return _processing_response(result)
@@ -105,8 +107,9 @@ async def start_background_processing(video_id: str, user: CurrentUser) -> Proce
     """Start processing immediately and return without waiting for the video."""
 
     # Validate the ID and upload before creating a job.
-    video_processing_service.find_upload(video_id)
-    job = processing_job_manager.start(video_id, user.id)
+    safe_id = video_storage_service.require_owner(video_id, user.id)
+    video_processing_service.find_upload(safe_id)
+    job = processing_job_manager.start(safe_id, user.id)
     return ProcessingJobCreated(job_id=job.id, video_id=video_id, status=job.status)
 
 
@@ -149,5 +152,14 @@ def _job_message(job: ProcessingJob) -> ProcessingProgressMessage:
 async def download_processed_video(video_id: str, user: CurrentUser) -> FileResponse:
     """Return a previously processed MP4 for browser playback or download."""
 
-    path = video_processing_service.get_processed_path(video_id)
+    safe_id = video_storage_service.require_owner(video_id, user.id)
+    path = video_processing_service.get_processed_path(safe_id)
     return FileResponse(path, media_type="video/mp4", filename=path.name)
+
+
+@router.post("/{video_id}/release", status_code=status.HTTP_204_NO_CONTENT)
+async def release_video_files(video_id: str, user: CurrentUser) -> Response:
+    """Delete temporary server video files after the owner's browser saved the result."""
+
+    video_storage_service.release(video_id, user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

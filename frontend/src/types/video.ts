@@ -39,6 +39,7 @@ export interface IncidentSummary {
   status: string;
   snapshot_url: string;
   clip_url: string;
+  created_at: string;
 }
 
 export interface ApiErrorBody {

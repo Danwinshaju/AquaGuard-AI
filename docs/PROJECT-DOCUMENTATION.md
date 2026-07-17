@@ -55,6 +55,7 @@ The project is an educational assistance system. It is not certified safety equi
 | Machine learning | PyTorch | Optional LSTM temporal classifier |
 | Database | MongoDB 8 | Incidents, notes, status, and camera configuration |
 | Account security | MongoDB sessions + Python scrypt | HttpOnly login sessions, salted password hashes, owner isolation |
+| User media storage | Browser IndexedDB | Per-account processed videos, snapshots and clips after verified transfer |
 | Containers | Docker Desktop | Local MongoDB service |
 | Encoding | FFmpeg via imageio-ffmpeg | H.264 browser-compatible video |
 | Tests and quality | Pytest, Ruff, Black | Backend verification and formatting |
@@ -88,7 +89,7 @@ Uploaded video / Browser camera / RTSP camera
              React dashboard and incident UI
 ```
 
-The React frontend is compiled into `frontend/dist`. FastAPI serves the compiled interface and the API from port 8000. MongoDB runs in Docker and stores users, opaque sessions, incident ownership, and other persistent documents. Generated media remains in the local `storage` directory. Every incident query and evidence-file lookup requires the signed-in owner's ID; legacy unowned incidents are hidden.
+The React frontend is compiled into `frontend/dist`. FastAPI serves the compiled interface and the API from port 8000. MongoDB runs in Docker and stores users, opaque sessions, incident ownership, and other persistent documents. Generated media begins in temporary server storage. The frontend verifies complete IndexedDB writes before owner-checked release endpoints delete server media. Every incident query and evidence-file lookup requires the signed-in owner's ID; legacy unowned incidents are hidden.
 
 ## 6. AI and computer-vision workflow
 
@@ -207,6 +208,8 @@ python -m pytest
 | GET/POST | `/api/v1/cameras` | List or register network cameras |
 | DELETE | `/api/v1/cameras/{id}` | Remove camera configuration |
 | GET | `/api/v1/incidents` | Search/filter incidents |
+| POST | `/api/v1/incidents/{id}/release-evidence` | Delete temporary server media after verified browser storage |
+| POST | `/api/v1/videos/{id}/release` | Delete temporary uploaded and processed server video |
 | PATCH | `/api/v1/incidents/{id}/acknowledge` | Acknowledge incident |
 | PATCH | `/api/v1/incidents/{id}/resolve` | Resolve incident |
 | PATCH | `/api/v1/incidents/{id}/false-alarm` | Mark false alarm |
@@ -218,9 +221,9 @@ python -m pytest
 
 ## 12. Data storage and privacy
 
-MongoDB stores incident metadata and persistent camera configuration. The local `storage` directory contains uploaded videos, processed outputs, evidence snapshots, evidence clips, and temporary training datasets. Incident evidence and its MongoDB document are deleted automatically after 24 hours by default. Training CSV uploads are removed after training completes.
+MongoDB stores accounts, sessions, incident metadata, and persistent camera configuration. The server `storage` directory is temporary working space for uploads, processed outputs, snapshots, and clips. After verified IndexedDB writes, owner-checked release endpoints delete those server files. Failed transfers remain temporarily on the server, and unattended network-camera evidence transfers when its owner opens Incidents. Incident reports and browser media are deleted automatically after 24 hours by default. Training CSV uploads are removed after training completes.
 
-The current project intentionally has no user-authentication layer because it is designed for single-user local demonstration. It must not be exposed directly to the public internet.
+Signup/login and backend owner filters prevent one account from accessing another account's records or server evidence. Browser IndexedDB remains specific to one browser profile and deployment origin, so users must download evidence they need on another device.
 
 ## 13. Configuration
 

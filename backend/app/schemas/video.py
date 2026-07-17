@@ -1,5 +1,6 @@
 """Schemas for video upload API responses."""
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -52,6 +53,7 @@ class IncidentSummary(BaseModel):
     status: str
     snapshot_url: str
     clip_url: str
+    created_at: datetime
 
 
 class IncidentActionResponse(BaseModel):

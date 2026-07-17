@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Download, Printer, ShieldAlert, Trash2, XCircle } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle2, Download, HardDriveDownload, Printer, ShieldAlert, Trash2, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { deleteAllIncidents, deleteIncident, fetchIncidents, updateIncident, updateIncidentNotes } from "../api/dashboard";
+import { useAuth } from "../auth/AuthContext";
 import { AppShell } from "../components/AppShell";
+import { clearOwnerIncidentEvidence, deleteIncidentEvidence, moveIncidentEvidenceToDevice, purgeExpiredOwnerMedia, requestPersistentDeviceStorage } from "../storage/userMediaStorage";
 import type { IncidentListItem } from "../types/dashboard";
 
 export function IncidentsPage() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -23,14 +26,30 @@ export function IncidentsPage() {
     createdBefore: createdBefore ? new Date(`${createdBefore}T23:59:59`).toISOString() : "",
   };
   const { data = [], isLoading } = useQuery({ queryKey: ["incidents", filters], queryFn: () => fetchIncidents(filters) });
+  useEffect(() => {
+    if (!user) return;
+    void purgeExpiredOwnerMedia(user.id);
+    void requestPersistentDeviceStorage();
+  }, [user]);
   const action = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: "acknowledge" | "resolve" | "false-alarm" | "delete" }) => name === "delete" ? deleteIncident(id) : updateIncident(id, name),
+    mutationFn: async ({ id, name }: { id: string; name: "acknowledge" | "resolve" | "false-alarm" | "delete" }) => {
+      if (name !== "delete") return updateIncident(id, name);
+      await deleteIncident(id);
+      if (user) await deleteIncidentEvidence(user.id, id);
+    },
     onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["incidents"] }); },
   });
   const bulkDelete = useMutation({
     mutationFn: async (mode: "selected" | "all") => {
-      if (mode === "all") await deleteAllIncidents();
-      else await Promise.all([...selectedIds].map(deleteIncident));
+      if (mode === "all") {
+        await deleteAllIncidents();
+        if (user) await clearOwnerIncidentEvidence(user.id);
+      } else {
+        await Promise.all([...selectedIds].map(async (id) => {
+          await deleteIncident(id);
+          if (user) await deleteIncidentEvidence(user.id, id);
+        }));
+      }
     },
     onSuccess: async () => {
       setSelectedIds(new Set());
@@ -42,7 +61,7 @@ export function IncidentsPage() {
     <AppShell>
       <h1 className="text-3xl font-black">Incidents</h1>
       <p className="mt-2 text-slate-500">Review evidence and record the outcome of every alert.</p>
-      <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-950">Privacy protection: every incident report, screenshot and evidence clip is permanently deleted 24 hours after it is created.</div>
+      <div className="mt-5 flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"><HardDriveDownload className="shrink-0" size={22} /><div><p className="font-black">Evidence uses your device storage</p><p className="mt-1">Screenshots and clips move into this browser's private IndexedDB, then the server copy is deleted. Evidence remains available only in this browser and is removed after 24 hours.</p></div></div>
       <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 print:hidden"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><input className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Search camera or video" value={search} onChange={(event) => setSearch(event.target.value)} /><select className="rounded-xl border border-slate-300 px-3 py-2" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option><option value="unresolved">Unresolved</option><option value="acknowledged">Acknowledged</option><option value="resolved">Resolved</option><option value="false_alarm">False alarm</option></select><select className="rounded-xl border border-slate-300 px-3 py-2" value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}><option value="">All sources</option><option value="live_camera">Live camera</option><option value="uploaded_video">Uploaded video</option></select><label className="text-xs font-bold text-slate-600">Minimum risk: {minimumRisk}<input className="mt-2 w-full accent-red-700" type="range" min="0" max="100" step="5" value={minimumRisk} onChange={(event) => setMinimumRisk(Number(event.target.value))} /></label><label className="text-xs font-bold text-slate-600">From date<input className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2" type="date" value={createdAfter} onChange={(event) => setCreatedAfter(event.target.value)} /></label><label className="text-xs font-bold text-slate-600">To date<input className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2" type="date" value={createdBefore} onChange={(event) => setCreatedBefore(event.target.value)} /></label></div><div className="mt-4 flex flex-wrap gap-3"><a className="flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2 font-black text-white" href="/api/v1/incidents/export.csv"><Download size={18} /> Export CSV</a><button className="flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2 font-black text-white" onClick={() => window.print()}><Printer size={18} /> Print / Save PDF</button><button className="rounded-xl bg-slate-100 px-4 py-2 font-bold" onClick={() => { setSearch(""); setStatusFilter(""); setSourceFilter(""); setMinimumRisk(0); setCreatedAfter(""); setCreatedBefore(""); }}>Clear filters</button></div></section>
       {data.length > 0 && <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
         <button className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-800" onClick={() => setSelectedIds(selectedIds.size === data.length ? new Set() : new Set(data.map((incident) => incident.id)))}>{selectedIds.size === data.length ? "Clear selection" : "Select all"}</button>
@@ -56,12 +75,11 @@ export function IncidentsPage() {
         {data.map((incident) => (
           <article key={incident.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <label className="flex cursor-pointer items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 font-bold text-slate-700"><input className="h-5 w-5 accent-red-700" type="checkbox" checked={selectedIds.has(incident.id)} onChange={() => setSelectedIds((current) => { const next = new Set(current); if (next.has(incident.id)) next.delete(incident.id); else next.add(incident.id); return next; })} /> Select this incident</label>
-            <img className="aspect-video w-full bg-slate-950 object-contain" src={incident.snapshot_url} alt={`Incident for person ${incident.track_id}`} />
+            {user && <IncidentEvidence incident={incident} ownerId={user.id} />}
             <div className="p-5">
               <span className={`mb-3 inline-flex rounded-full px-3 py-1 text-xs font-black uppercase ${incident.source === "live_camera" ? "bg-red-100 text-red-800" : "bg-ocean-100 text-ocean-800"}`}>{incident.source === "live_camera" ? "Live camera" : "Uploaded video"}</span>
               <p className="mb-3 text-sm font-bold text-slate-700">{incident.source_name ?? incident.video_id}</p>
               <div className="flex items-start justify-between gap-3"><div><p className="font-black text-red-700">Person ID {incident.track_id} · Risk {incident.risk_score.toFixed(0)}</p><p className="mt-1 text-sm text-slate-500">{new Date(incident.created_at).toLocaleString()}</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase">{incident.status.replace("_", " ")}</span></div>
-              <video className="mt-4 aspect-video w-full rounded-xl bg-black" controls src={incident.clip_url} />
               {incident.triggered_signals.length > 0 && (
                 <div className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-900">
                   <p className="font-black">Why this alert was created</p>
@@ -84,6 +102,33 @@ export function IncidentsPage() {
       </div>
     </AppShell>
   );
+}
+
+function IncidentEvidence({ incident, ownerId }: { incident: IncidentListItem; ownerId: string }) {
+  const [urls, setUrls] = useState<{ snapshotUrl: string; clipUrl: string } | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    let createdUrls: { snapshotUrl: string; clipUrl: string } | null = null;
+    void moveIncidentEvidenceToDevice(ownerId, incident)
+      .then((nextUrls) => {
+        createdUrls = nextUrls;
+        if (active) setUrls(nextUrls);
+      })
+      .catch((reason) => {
+        if (active) setError(reason instanceof Error ? reason.message : "Evidence unavailable.");
+      });
+    return () => {
+      active = false;
+      if (createdUrls) {
+        URL.revokeObjectURL(createdUrls.snapshotUrl);
+        URL.revokeObjectURL(createdUrls.clipUrl);
+      }
+    };
+  }, [incident, ownerId]);
+  if (error) return <div className="grid aspect-video place-items-center bg-slate-950 p-6 text-center text-sm text-amber-200">{error} It may be stored on another device.</div>;
+  if (!urls) return <div className="grid aspect-video place-items-center bg-slate-950 text-sm font-bold text-slate-300">Moving evidence to your device...</div>;
+  return <div className="bg-slate-950"><img className="aspect-video w-full object-contain" src={urls.snapshotUrl} alt={`Incident for person ${incident.track_id}`} /><div className="p-3"><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">Saved on this device</span><video className="mt-3 aspect-video w-full rounded-xl bg-black" controls src={urls.clipUrl} /></div></div>;
 }
 
 function IncidentNotesEditor({ incident }: { incident: IncidentListItem }) {

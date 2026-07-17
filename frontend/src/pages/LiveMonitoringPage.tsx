@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Camera, CameraOff, Radio, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
+import { useAuth } from "../auth/AuthContext";
+import { moveIncidentEvidenceToDevice } from "../storage/userMediaStorage";
 
 interface LiveIncident {
   id: string;
@@ -38,6 +40,7 @@ interface LiveMetadata {
 }
 
 export function LiveMonitoringPage() {
+  const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const socketRef = useRef<WebSocket | null>(null);
@@ -49,6 +52,7 @@ export function LiveMonitoringPage() {
   const awaitingResultRef = useRef(false);
   const dangerSoundedRef = useRef(false);
   const connectionErrorRef = useRef<string | null>(null);
+  const evidenceObjectUrlsRef = useRef<string[]>([]);
   const zoneDrawStartRef = useRef<{ x: number; y: number } | null>(null);
   const [running, setRunning] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
@@ -81,6 +85,7 @@ export function LiveMonitoringPage() {
       streamRef.current?.getTracks().forEach((track) => track.stop());
       void audioContextRef.current?.close();
       if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
+      for (const url of evidenceObjectUrlsRef.current) URL.revokeObjectURL(url);
     };
   }, []);
 
@@ -90,6 +95,8 @@ export function LiveMonitoringPage() {
         throw new Error("This browser does not provide camera access.");
       }
       setRunning(true);
+      for (const url of evidenceObjectUrlsRef.current) URL.revokeObjectURL(url);
+      evidenceObjectUrlsRef.current = [];
       setLiveIncidents([]);
       connectionErrorRef.current = null;
       try {
@@ -152,6 +159,17 @@ export function LiveMonitoringPage() {
                 ),
               ]);
               setMessage("Live incident report and evidence saved");
+              if (user) {
+                for (const incident of frameData.incidents) {
+                  void moveIncidentEvidenceToDevice(user.id, incident)
+                    .then((local) => {
+                      evidenceObjectUrlsRef.current.push(local.snapshotUrl, local.clipUrl);
+                      setLiveIncidents((current) => current.map((item) => item.id === incident.id ? { ...item, snapshot_url: local.snapshotUrl, clip_url: local.clipUrl } : item));
+                      setMessage("Live evidence saved in your browser; server copy removed");
+                    })
+                    .catch(() => setMessage("Live evidence is temporarily on the server; open Incidents to retry device storage"));
+                }
+              }
             }
             if (frameData.danger && !dangerSoundedRef.current) {
               dangerSoundedRef.current = true;
@@ -375,7 +393,7 @@ export function LiveMonitoringPage() {
       {liveIncidents.length > 0 && (
         <section className="mt-6 rounded-2xl border-2 border-red-400 bg-red-50 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div><h2 className="text-xl font-black text-red-800">Saved live incident evidence</h2><p className="text-sm text-red-700">These reports are stored in MongoDB and the local evidence folder.</p></div>
+            <div><h2 className="text-xl font-black text-red-800">Saved live incident evidence</h2><p className="text-sm text-red-700">The report stays in MongoDB while screenshots and clips move into this browser's private storage.</p></div>
             <Link className="rounded-xl bg-red-700 px-4 py-2 font-black text-white" to="/incidents">View all incident reports</Link>
           </div>
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
