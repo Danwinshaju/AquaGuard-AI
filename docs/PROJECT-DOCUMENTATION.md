@@ -136,6 +136,7 @@ The application redirects unauthenticated visitors to `/login`. New users regist
 ### Separate operating guides
 
 - [USER-GUIDE.md](USER-GUIDE.md) contains step-by-step instructions for every page and the normal operating checklist.
+- [ACCOUNTS-AND-STORAGE-GUIDE.md](ACCOUNTS-AND-STORAGE-GUIDE.md) explains signup/login use cases, session and ownership implementation, startup commands, and every storage location.
 - [LIVE-DEMO-GUIDE.md](LIVE-DEMO-GUIDE.md) provides a prepared ten-minute project-presentation sequence.
 - [TROUBLESHOOTING-GUIDE.md](TROUBLESHOOTING-GUIDE.md) covers startup, Docker, camera, tracking, video, alert, evidence, and training problems.
 - [AQUATIC-MODEL-TRAINING.md](AQUATIC-MODEL-TRAINING.md) audits the supplied Roboflow dataset and provides CPU/GPU training commands.

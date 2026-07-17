@@ -360,7 +360,11 @@ function AnalyzePage() {
                 <div className="bg-slate-950 p-2 sm:p-4">
                   <video
                     className="aspect-video w-full rounded-xl bg-black"
+                    autoPlay
                     controls
+                    loop
+                    muted
+                    playsInline
                     preload="metadata"
                     src={result.download_url}
                     onTimeUpdate={(event) => {

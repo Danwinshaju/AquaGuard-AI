@@ -36,13 +36,17 @@ const technologies = [
   ["Ultralytics YOLO11", "Person detection and human-pose landmark estimation."],
   ["ByteTrack", "Persistent person IDs through movement and short occlusion."],
   ["PyTorch LSTM", "Optional temporal classifier for movement/pose sequences."],
-  ["MongoDB 8", "Camera configurations, incident reports, status and operator notes."],
+  ["MongoDB 8", "Accounts, sessions, camera configurations, incident reports, status and notes."],
   ["Docker Desktop", "Runs the local MongoDB database consistently on Windows."],
   ["FFmpeg", "Creates H.264 browser-compatible processed videos and evidence clips."],
   ["React Query + Recharts", "API state, automatic refresh and dashboard visualisation."],
 ] as const;
 
 const apiEndpoints = [
+  ["POST", "/api/v1/auth/signup", "Create an account and login session"],
+  ["POST", "/api/v1/auth/login", "Verify credentials and start a session"],
+  ["POST", "/api/v1/auth/logout", "Delete the current session"],
+  ["GET", "/api/v1/auth/me", "Return the signed-in account"],
   ["GET", "/api/v1/health", "Application health"],
   ["GET", "/api/v1/health/database", "MongoDB connection"],
   ["GET", "/api/v1/health/system", "GPU, storage, model and camera health"],
@@ -105,7 +109,7 @@ export function DocumentationPage() {
         <aside className="rounded-2xl border border-slate-200 bg-white p-5 lg:sticky lg:top-5 print:hidden">
           <p className="font-black">On this page</p>
           <nav className="mt-3 grid gap-1 text-sm font-semibold text-slate-600">
-            {[["#demos", "Live demonstrations"], ["#usage", "How to use the app"], ["#overview", "System overview"], ["#technology", "Technology stack"], ["#architecture", "Architecture"], ["#ai", "AI detection workflow"], ["#features", "Features"], ["#run", "Run and verify"], ["#api", "API reference"], ["#data", "Data and retention"], ["#troubleshooting", "Troubleshooting"]].map(([href, label]) => <a className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-ocean-700" href={href} key={href}>{label}</a>)}
+            {[["#demos", "Live demonstrations"], ["#usage", "How to use the app"], ["#accounts", "Accounts and login"], ["#overview", "System overview"], ["#technology", "Technology stack"], ["#architecture", "Architecture"], ["#ai", "AI detection workflow"], ["#features", "Features"], ["#run", "Run and verify"], ["#api", "API reference"], ["#data", "Data and retention"], ["#troubleshooting", "Troubleshooting"]].map(([href, label]) => <a className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-ocean-700" href={href} key={href}>{label}</a>)}
           </nav>
         </aside>
 
@@ -137,10 +141,22 @@ export function DocumentationPage() {
             <p className="mt-1 text-sm text-slate-600">Download the guide you need and open it with VS Code, Notepad, Word, or a Markdown viewer.</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <GuideDownload href="/api/v1/documentation/user-guide" title="Complete User Guide" text="Step-by-step instructions for every AquaGuard page and normal operating checklist." />
+              <GuideDownload href="/api/v1/documentation/accounts-and-storage-guide" title="Accounts and Storage Guide" text="Login use cases, authentication implementation, startup commands and storage locations." />
               <GuideDownload href="/api/v1/documentation/live-demo-guide" title="Live Demo Guide" text="A prepared ten-minute presentation order with demonstration rules and local links." />
               <GuideDownload href="/api/v1/documentation/troubleshooting-guide" title="Troubleshooting Guide" text="Common startup, Docker, camera, tracking, alert, video and training solutions." />
               <GuideDownload href="/api/v1/documentation/aquatic-model-training" title="Aquatic YOLO Training" text="Dataset audit, CPU/GPU commands, outputs, integration and responsible evaluation." />
             </div>
+          </DocSection>
+
+          <DocSection id="accounts" icon={<ShieldAlert />} title="Accounts and login use cases">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <MiniCard title="First use" text="Open /signup, enter a name, valid email and an 8-to-128-character password. Account creation also starts the login session." />
+              <MiniCard title="Returning user" text="Open /login and enter the registered email and password. A valid session lasts up to seven days." />
+              <MiniCard title="Multiple users" text="Every person uses a separate account. Backend owner filters isolate incidents, evidence, totals, jobs and cameras." />
+              <MiniCard title="Shared computer" text="Download required evidence and log out after use. Clearing site data permanently removes that browser's IndexedDB media." />
+            </div>
+            <p className="mt-4 leading-7 text-slate-600">Passwords are stored only as salted scrypt hashes. The browser receives an opaque token in an HttpOnly, SameSite cookie, while MongoDB stores only its SHA-256 hash and expiry. Protected API and WebSocket operations resolve the current user and require matching owner IDs.</p>
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950"><strong>Password recovery:</strong> this local MVP does not send password-reset email. A public deployment must add a verified reset workflow, HTTPS, rate limiting and a security review.</div>
           </DocSection>
 
           <DocSection id="overview" icon={<FileText />} title="Project overview">
@@ -178,8 +194,9 @@ export function DocumentationPage() {
           </DocSection>
 
           <DocSection id="run" icon={<Terminal />} title="Run and verify the project">
-            <p className="text-slate-600">Open Docker Desktop, then use PowerShell in the project root.</p>
+            <p className="text-slate-600">Install Python 3.11, Node.js/npm and Docker Desktop. Open Docker Desktop, wait for its Linux engine to run, then use PowerShell in the project root.</p>
             <CodeBlock>{`cd "C:\\Users\\ELCOT\\OneDrive - ELCOT\\Documents\\AI Drowning Detection"\nnpm start`}</CodeBlock>
+            <p className="mt-4 text-slate-600">Keep that terminal open. After <code>Application startup complete</code>, visit <code>http://127.0.0.1:8000</code>. Press <code>Ctrl+C</code> to stop the application.</p>
             <p className="mt-4 text-slate-600">For a faster restart that reuses the compiled frontend:</p><CodeBlock>{`npm run start:fast`}</CodeBlock>
             <p className="mt-4 text-slate-600">Development verification:</p><CodeBlock>{`.\\.venv\\Scripts\\Activate.ps1\ncd .\\backend\npython -m black .\npython -m ruff check .\npython -m pytest`}</CodeBlock>
           </DocSection>
@@ -190,7 +207,8 @@ export function DocumentationPage() {
 
           <DocSection id="data" icon={<HardDrive />} title="Data storage and retention">
             <div className="grid gap-4 sm:grid-cols-2"><MiniCard title="MongoDB" text="Accounts, sessions, incident metadata, lifecycle status, notes and camera configurations." /><MiniCard title="User browser storage" text="IndexedDB receives processed videos, snapshots and clips before temporary server copies are deleted." /></div>
-            <p className="mt-4 leading-7 text-slate-600">Incident records, snapshots and clips are automatically deleted after 24 hours by default. Operators can delete one, selected, or all incidents earlier. Uploaded training CSV files are removed when their training job finishes.</p>
+            <p className="mt-4 leading-7 text-slate-600">The server temporarily stores uploads and generated media because AI processing runs there. It deletes those files only after a non-empty blob is committed successfully to the signed-in user's IndexedDB. Failed transfers keep their temporary server copy. Network-camera evidence transfers when its owner opens Incidents.</p>
+            <p className="mt-3 leading-7 text-slate-600">IndexedDB belongs to one browser profile and origin; it does not synchronize to another device or browser and can be removed by clearing site data. Incident records and media expire after 24 hours by default. Download evidence that must be retained longer.</p>
           </DocSection>
 
           <DocSection id="troubleshooting" icon={<Wrench />} title="Troubleshooting">
