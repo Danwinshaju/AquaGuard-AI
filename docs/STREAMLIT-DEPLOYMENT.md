@@ -74,6 +74,11 @@ on that branch before it is merged into `main`.
 Confirm `requirements.txt` uses the PyTorch CPU wheel index and does not install CUDA wheels.
 Reboot the app once after correcting the requirements.
 
+### OpenCV reports that `libGL.so.1` is missing
+
+Confirm the repository contains `packages.txt`. Streamlit installs the listed Debian
+`libgl1` and `libglib2.0-0` runtime libraries before starting the Python application.
+
 ### Video processing is slow
 
 Use a 10-to-20-second video and select **Fast**. Free hosting uses shared CPU resources.
