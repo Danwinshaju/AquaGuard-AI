@@ -77,7 +77,7 @@ Reboot the app once after correcting the requirements.
 ### OpenCV reports that `libGL.so.1` is missing
 
 Confirm the repository contains `packages.txt`. Streamlit installs the listed Debian
-`libgl1` and `libglib2.0-0` runtime libraries before starting the Python application.
+`libgl1` runtime library before starting the Python application.
 
 ### Video processing is slow
 
